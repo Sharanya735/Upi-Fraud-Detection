@@ -1,43 +1,10 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, AlertTriangle, Shield, Activity } from "lucide-react";
 
 const Dashboard = () => {
-  const [metrics, setMetrics] = useState<any | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchMetrics = async () => {
-      try {
-        // try primary backend first, then fallback to alternate port if needed
-        const endpoints = ['http://127.0.0.1:8000/metrics', 'http://127.0.0.1:8001/metrics'];
-        let j = null;
-        for (const url of endpoints) {
-          try {
-            const res = await fetch(url);
-            if (!res.ok) continue;
-            j = await res.json();
-            break;
-          } catch (err) {
-            continue;
-          }
-        }
-        if (!j) return;
-        if (!mounted) return;
-        setMetrics(j);
-        setLastUpdated(new Date().toLocaleTimeString());
-      } catch (e) {
-        // ignore
-      }
-    };
-    fetchMetrics();
-    const id = setInterval(fetchMetrics, 5000);
-    return () => { mounted = false; clearInterval(id); };
-  }, []);
   // Sample data for visualizations
   const fraudTrendData = [
     { month: "Jan", fraudulent: 45, legitimate: 955 },
@@ -87,8 +54,8 @@ const Dashboard = () => {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? `${metrics.detection_rate?.toFixed(1)}%` : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.fraud_count} frauds in last ${metrics.window_seconds}s` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">98.5%</div>
+                <p className="text-xs text-muted-foreground">+2.1% from last month</p>
               </CardContent>
             </Card>
 
@@ -98,8 +65,8 @@ const Dashboard = () => {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? metrics.transactions : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${(metrics.throughput_tps*3600).toFixed(0)} tx/hr` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">12,543</div>
+                <p className="text-xs text-muted-foreground">+18% from yesterday</p>
               </CardContent>
             </Card>
 
@@ -109,8 +76,8 @@ const Dashboard = () => {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? metrics.fraud_count : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.anomaly_count} anomalies` : ''}</p>
+                <div className="text-2xl font-bold">42</div>
+                <p className="text-xs text-muted-foreground">-5% from last week</p>
               </CardContent>
             </Card>
 
@@ -120,8 +87,8 @@ const Dashboard = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? `${metrics.avg_latency_ms.toFixed(1)}ms` : '—'}</div>
-                <p className="text-xs text-muted-foreground">{lastUpdated ? `Updated ${lastUpdated}` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">43ms</div>
+                <p className="text-xs text-muted-foreground">-8ms improvement</p>
               </CardContent>
             </Card>
           </div>
@@ -220,18 +187,24 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(metrics && metrics.recent_alerts && metrics.recent_alerts.length > 0 ? metrics.recent_alerts : []).map((alert: any, idx: number) => (
-                    <div key={`${alert.transaction_id}-${idx}`} className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-card hover:bg-accent/5 transition-colors">
+                  {[
+                    { id: "TXN-9876", amount: "₹45,000", risk: 92, time: "2 min ago" },
+                    { id: "TXN-9845", amount: "₹32,500", risk: 88, time: "15 min ago" },
+                    { id: "TXN-9823", amount: "₹28,900", risk: 85, time: "32 min ago" },
+                    { id: "TXN-9801", amount: "₹51,200", risk: 94, time: "1 hour ago" },
+                    { id: "TXN-9789", amount: "₹19,800", risk: 81, time: "2 hours ago" },
+                  ].map((alert) => (
+                    <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-card hover:bg-accent/5 transition-colors">
                       <div className="flex items-center gap-3">
                         <AlertTriangle className="h-4 w-4 text-destructive" />
                         <div>
-                          <p className="font-medium text-sm">{alert.transaction_id || '—'}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(alert.timestamp).toLocaleString()}</p>
+                          <p className="font-medium text-sm">{alert.id}</p>
+                          <p className="text-xs text-muted-foreground">{alert.time}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-sm">{alert.amount ? `₹${alert.amount}` : '—'}</p>
-                        <p className="text-xs text-destructive">{Math.round(alert.risk_score*100)}% risk</p>
+                        <p className="font-semibold text-sm">{alert.amount}</p>
+                        <p className="text-xs text-destructive">{alert.risk}% risk</p>
                       </div>
                     </div>
                   ))}
