@@ -58,6 +58,3 @@ port = 54321
 
 [functions.predict-fraud]
 verify_jwt = false
-
-[functions.get-metrics]
-verify_jwt = false
