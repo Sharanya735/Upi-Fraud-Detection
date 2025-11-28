@@ -15,113 +15,86 @@ interface TransactionInput {
   is_new_payee: number;
   device_changed: number;
   tx_count_24h: number;
+  timestamp?: string;
 }
 
 interface PredictionResult {
   risk_score: number;
-  is_fraud: number;
+  fraud_label: number;
   supervised_prob: number;
   anomaly_flag: number;
   shap_top_features: Record<string, number>;
+  latency_ms?: number;
 }
 
-// Simulated ML model prediction
-// In production, this would load actual trained models
-function predictFraud(transaction: TransactionInput): PredictionResult {
-  // Feature engineering
-  const features = {
-    amount_normalized: transaction.amount / 10000,
-    hour: transaction.hour,
-    weekday: transaction.weekday,
-    tx_count_24h: transaction.tx_count_24h,
-    is_new_payee: transaction.is_new_payee,
-    device_changed: transaction.device_changed,
+// Call the real Python ML API
+async function predictFraud(transaction: TransactionInput): Promise<PredictionResult> {
+  const PYTHON_ML_API_URL = Deno.env.get('PYTHON_ML_API_URL');
+  
+  if (!PYTHON_ML_API_URL) {
+    throw new Error('PYTHON_ML_API_URL environment variable not configured');
+  }
+
+  // Prepare timestamp if not provided
+  const timestamp = transaction.timestamp || new Date().toISOString();
+  
+  // Prepare the payload for the Python API
+  const payload = {
+    transaction_id: `TXN_${Date.now()}`,
+    user_id: transaction.user_id,
+    merchant_id: transaction.merchant_id,
+    device_id: transaction.device_id,
+    amount: transaction.amount,
+    timestamp: timestamp,
+    tx_count_24h: transaction.tx_count_24h || 0,
+    is_new_payee: transaction.is_new_payee || 0,
+    device_changed: transaction.device_changed || 0,
   };
 
-  // Simulated Random Forest probability (supervised model)
-  // High risk indicators: large amounts, late hours, new payees, device changes
-  let supervised_prob = 0.1; // base probability
+  try {
+    // Call the /predict endpoint
+    const predictResponse = await fetch(`${PYTHON_ML_API_URL}/predict`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (features.amount_normalized > 3) supervised_prob += 0.25;
-  if (features.amount_normalized > 5) supervised_prob += 0.15;
-  
-  if (features.hour < 6 || features.hour > 22) supervised_prob += 0.15;
-  
-  if (features.is_new_payee === 1) supervised_prob += 0.2;
-  
-  if (features.device_changed === 1) supervised_prob += 0.25;
-  
-  if (features.tx_count_24h > 10) supervised_prob += 0.1;
-  if (features.tx_count_24h > 20) supervised_prob += 0.15;
+    if (!predictResponse.ok) {
+      const errorText = await predictResponse.text();
+      throw new Error(`Python API predict error: ${predictResponse.status} - ${errorText}`);
+    }
 
-  supervised_prob = Math.min(supervised_prob, 0.98);
+    const predictData = await predictResponse.json();
 
-  // Simulated Isolation Forest anomaly detection
-  // Detects unusual combinations of features
-  let anomaly_score = 0;
-  
-  // Unusual amount + time combination
-  if (features.amount_normalized > 4 && (features.hour < 6 || features.hour > 22)) {
-    anomaly_score = 1;
-  }
-  
-  // High velocity with device change
-  if (features.tx_count_24h > 15 && features.device_changed === 1) {
-    anomaly_score = 1;
-  }
-  
-  // New payee with high amount at unusual time
-  if (features.is_new_payee === 1 && features.amount_normalized > 3 && 
-      (features.hour < 7 || features.hour > 21)) {
-    anomaly_score = 1;
-  }
+    // Call the /explain endpoint for SHAP values
+    const explainResponse = await fetch(`${PYTHON_ML_API_URL}/explain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-  // Hybrid fusion (weighted combination)
-  const alpha = 0.7;
-  const risk_score = alpha * supervised_prob + (1 - alpha) * anomaly_score;
-  const is_fraud = risk_score > 0.5 ? 1 : 0;
+    let shap_top_features = {};
+    if (explainResponse.ok) {
+      const explainData = await explainResponse.json();
+      shap_top_features = explainData.shap_top_features || {};
+    }
 
-  // Simulated SHAP feature importance
-  // In production, these would come from actual SHAP computation
-  const shap_values: Record<string, number> = {};
-  
-  if (features.amount_normalized > 2) {
-    shap_values.amount = 0.15 * features.amount_normalized;
+    return {
+      risk_score: predictData.risk_score,
+      fraud_label: predictData.fraud_label,
+      supervised_prob: predictData.supervised_prob || predictData.risk_score,
+      anomaly_flag: predictData.anomaly_flag || 0,
+      shap_top_features: shap_top_features,
+      latency_ms: predictData.latency_ms,
+    };
+  } catch (error) {
+    console.error('Error calling Python ML API:', error);
+    throw error;
   }
-  
-  if (features.hour < 6 || features.hour > 22) {
-    shap_values.hour = 0.12;
-  }
-  
-  if (features.is_new_payee === 1) {
-    shap_values.is_new_payee = 0.18;
-  }
-  
-  if (features.device_changed === 1) {
-    shap_values.device_changed = 0.22;
-  }
-  
-  if (features.tx_count_24h > 10) {
-    shap_values.tx_count_24h = 0.08 * (features.tx_count_24h / 10);
-  }
-
-  // Sort by absolute value and take top 5
-  const sorted_features = Object.entries(shap_values)
-    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-    .slice(0, 5);
-  
-  const shap_top_features: Record<string, number> = {};
-  for (const [key, value] of sorted_features) {
-    shap_top_features[key] = value;
-  }
-
-  return {
-    risk_score,
-    is_fraud,
-    supervised_prob,
-    anomaly_flag: anomaly_score,
-    shap_top_features,
-  };
 }
 
 serve(async (req) => {
@@ -143,12 +116,18 @@ serve(async (req) => {
 
     console.log('Processing transaction:', transaction);
     
-    const prediction = predictFraud(transaction);
+    const prediction = await predictFraud(transaction);
     
     console.log('Prediction result:', prediction);
 
+    // Convert fraud_label to is_fraud for backward compatibility
+    const response = {
+      ...prediction,
+      is_fraud: prediction.fraud_label,
+    };
+
     return new Response(
-      JSON.stringify(prediction),
+      JSON.stringify(response),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
