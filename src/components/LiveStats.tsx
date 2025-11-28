@@ -23,10 +23,16 @@ const LiveStats = () => {
         body: {},
       });
 
-      if (error) throw error;
+      if (error) {
+        // Silently fail if Python API is not available
+        setMetrics(null);
+        setIsLoading(false);
+        return;
+      }
       setMetrics(data);
     } catch (error) {
-      console.error("Error fetching metrics:", error);
+      // Silently fail - metrics are optional
+      setMetrics(null);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +62,22 @@ const LiveStats = () => {
   }
 
   if (!metrics) {
-    return null;
+    // Show info message if Python API is not available
+    return (
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Activity className="h-5 w-5" />
+            <div>
+              <p className="font-medium">Live Statistics Unavailable</p>
+              <p className="text-sm">
+                Start your Python ML API server to see real-time metrics. Predictions will still work.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const stats = [
