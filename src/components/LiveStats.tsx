@@ -11,6 +11,7 @@ interface Metrics {
   avg_risk_score: number | null;
   anomaly_count: number;
   throughput_tps: number;
+  api_available?: boolean;
 }
 
 const LiveStats = () => {
@@ -61,7 +62,7 @@ const LiveStats = () => {
     );
   }
 
-  if (!metrics) {
+  if (!metrics || metrics.api_available === false) {
     // Show info message if Python API is not available
     return (
       <Card className="mb-8">
