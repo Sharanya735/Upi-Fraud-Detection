@@ -15,14 +15,14 @@ import { Loader2, AlertTriangle, CheckCircle2, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const formSchema = z.object({
-  amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
-  user_id: z.string().min(1, "User ID is required"),
-  merchant_id: z.string().min(1, "Merchant ID is required"),
-  device_id: z.string().min(1, "Device ID is required"),
-  hour: z.string().min(1, "Hour is required"),
-  weekday: z.string().min(1, "Weekday is required"),
-  is_new_payee: z.string().min(1, "Required"),
-  device_changed: z.string().min(1, "Required"),
+  trans_amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+  category: z.string().min(1, "Merchant category is required"),
+  device_type: z.string().min(1, "Device type is required"),
+  state: z.string().min(1, "Transaction location is required"),
+  trans_hour: z.string().min(1, "Time of day is required"),
+  transaction_frequency: z.string().min(1, "Transaction frequency is required"),
+  age: z.string().min(1, "Account age is required"),
+  previous_fraud: z.string().min(1, "Previous fraud history is required"),
 });
 
 interface PredictionResult {
@@ -41,14 +41,14 @@ const Demo = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      amount: "5000",
-      user_id: "USER001",
-      merchant_id: "MERCHANT001",
-      device_id: "DEVICE001",
-      hour: "14",
-      weekday: "2",
-      is_new_payee: "0",
-      device_changed: "0",
+      trans_amount: "5000",
+      category: "0",
+      device_type: "mobile",
+      state: "22",
+      trans_hour: "14",
+      transaction_frequency: "normal",
+      age: "25",
+      previous_fraud: "no",
     },
   });
 
@@ -59,15 +59,14 @@ const Demo = () => {
     try {
       const { data, error } = await supabase.functions.invoke("predict-fraud", {
         body: {
-          amount: parseFloat(values.amount),
-          user_id: values.user_id,
-          merchant_id: values.merchant_id,
-          device_id: values.device_id,
-          hour: parseInt(values.hour),
-          weekday: parseInt(values.weekday),
-          is_new_payee: parseInt(values.is_new_payee),
-          device_changed: parseInt(values.device_changed),
-          tx_count_24h: 0,
+          trans_amount: parseFloat(values.trans_amount),
+          category: parseInt(values.category),
+          device_type: values.device_type,
+          state: parseInt(values.state),
+          trans_hour: parseInt(values.trans_hour),
+          transaction_frequency: values.transaction_frequency,
+          age: parseInt(values.age),
+          previous_fraud: values.previous_fraud,
         },
       });
 
@@ -92,6 +91,11 @@ const Demo = () => {
     }
   }
 
+  const resetForm = () => {
+    form.reset();
+    setResult(null);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -111,36 +115,21 @@ const Demo = () => {
             {/* Form */}
             <Card>
               <CardHeader>
-                <CardTitle>Transaction Details</CardTitle>
-                <CardDescription>Enter transaction information to analyze fraud risk</CardDescription>
+                <CardTitle>Transaction Parameters</CardTitle>
+                <CardDescription>Enter transaction details for fraud detection analysis</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Transaction Amount (₹)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="5000" {...field} />
-                          </FormControl>
-                          <FormDescription>Amount in Indian Rupees</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="user_id"
+                        name="trans_amount"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>User ID</FormLabel>
+                            <FormLabel>Transaction Amount (₹) <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
-                              <Input placeholder="USER001" {...field} />
+                              <Input type="number" placeholder="Enter amount" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -149,68 +138,31 @@ const Demo = () => {
 
                       <FormField
                         control={form.control}
-                        name="merchant_id"
+                        name="category"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Merchant ID</FormLabel>
-                            <FormControl>
-                              <Input placeholder="MERCHANT001" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="device_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Device ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="DEVICE001" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="hour"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Hour (0-23)</FormLabel>
-                            <FormControl>
-                              <Input type="number" min="0" max="23" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="weekday"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Weekday</FormLabel>
+                            <FormLabel>Merchant Category <span className="text-destructive">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select day" />
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="0">Monday</SelectItem>
-                                <SelectItem value="1">Tuesday</SelectItem>
-                                <SelectItem value="2">Wednesday</SelectItem>
-                                <SelectItem value="3">Thursday</SelectItem>
-                                <SelectItem value="4">Friday</SelectItem>
-                                <SelectItem value="5">Saturday</SelectItem>
-                                <SelectItem value="6">Sunday</SelectItem>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="0">Food & Dining</SelectItem>
+                                <SelectItem value="1">Shopping</SelectItem>
+                                <SelectItem value="2">Travel</SelectItem>
+                                <SelectItem value="3">Entertainment</SelectItem>
+                                <SelectItem value="4">Bills & Utilities</SelectItem>
+                                <SelectItem value="5">Healthcare</SelectItem>
+                                <SelectItem value="6">Education</SelectItem>
+                                <SelectItem value="7">Personal Care</SelectItem>
+                                <SelectItem value="8">Investments</SelectItem>
+                                <SelectItem value="9">Insurance</SelectItem>
+                                <SelectItem value="10">Electronics</SelectItem>
+                                <SelectItem value="11">Groceries</SelectItem>
+                                <SelectItem value="12">Fuel & Transport</SelectItem>
+                                <SelectItem value="13">Other</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -222,19 +174,21 @@ const Demo = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="is_new_payee"
+                        name="device_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>New Payee?</FormLabel>
+                            <FormLabel>Device Type <span className="text-destructive">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select device type" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="0">No</SelectItem>
-                                <SelectItem value="1">Yes</SelectItem>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="mobile">Mobile</SelectItem>
+                                <SelectItem value="tablet">Tablet</SelectItem>
+                                <SelectItem value="desktop">Desktop</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -244,19 +198,27 @@ const Demo = () => {
 
                       <FormField
                         control={form.control}
-                        name="device_changed"
+                        name="state"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Device Changed?</FormLabel>
+                            <FormLabel>Transaction Location <span className="text-destructive">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select state" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="0">No</SelectItem>
-                                <SelectItem value="1">Yes</SelectItem>
+                              <SelectContent className="bg-background max-h-[200px]">
+                                <SelectItem value="22">Maharashtra</SelectItem>
+                                <SelectItem value="14">Karnataka</SelectItem>
+                                <SelectItem value="4">Tamil Nadu</SelectItem>
+                                <SelectItem value="40">Gujarat</SelectItem>
+                                <SelectItem value="38">Delhi</SelectItem>
+                                <SelectItem value="15">West Bengal</SelectItem>
+                                <SelectItem value="18">Rajasthan</SelectItem>
+                                <SelectItem value="35">Telangana</SelectItem>
+                                <SelectItem value="49">Uttar Pradesh</SelectItem>
+                                <SelectItem value="17">Madhya Pradesh</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -265,16 +227,130 @@ const Demo = () => {
                       />
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Analyzing Transaction...
-                        </>
-                      ) : (
-                        "Analyze Transaction"
-                      )}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="trans_hour"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Time of Day <span className="text-destructive">*</span></FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select time period" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="6">Morning (6-9 AM)</SelectItem>
+                                <SelectItem value="12">Afternoon (12-3 PM)</SelectItem>
+                                <SelectItem value="14">Afternoon (2-5 PM)</SelectItem>
+                                <SelectItem value="18">Evening (6-9 PM)</SelectItem>
+                                <SelectItem value="21">Night (9-12 PM)</SelectItem>
+                                <SelectItem value="2">Late Night (12-6 AM)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="transaction_frequency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transaction Frequency <span className="text-destructive">*</span></FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select frequency" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="low">Low (1-5 per day)</SelectItem>
+                                <SelectItem value="normal">Normal (6-15 per day)</SelectItem>
+                                <SelectItem value="high">High (16-30 per day)</SelectItem>
+                                <SelectItem value="very_high">Very High (30+ per day)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="age"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Age <span className="text-destructive">*</span></FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select account age" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="1">Less than 1 year</SelectItem>
+                                <SelectItem value="2">1-2 years</SelectItem>
+                                <SelectItem value="3">2-3 years</SelectItem>
+                                <SelectItem value="5">3-5 years</SelectItem>
+                                <SelectItem value="10">5-10 years</SelectItem>
+                                <SelectItem value="20">More than 10 years</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="previous_fraud"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Previous Fraud History <span className="text-destructive">*</span></FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select fraud history" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="no">No Previous Fraud</SelectItem>
+                                <SelectItem value="low">1-2 Incidents</SelectItem>
+                                <SelectItem value="medium">3-5 Incidents</SelectItem>
+                                <SelectItem value="high">More than 5 Incidents</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={resetForm}
+                      >
+                        Reset Form
+                      </Button>
+                      <Button type="submit" className="flex-1" disabled={isLoading}>
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          "Analyze Transaction"
+                        )}
+                      </Button>
+                    </div>
                   </form>
                 </Form>
               </CardContent>
