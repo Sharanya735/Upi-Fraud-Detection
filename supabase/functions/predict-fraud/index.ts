@@ -6,15 +6,14 @@ const corsHeaders = {
 };
 
 interface TransactionInput {
-  amount: number;
-  user_id: string;
-  merchant_id: string;
-  device_id: string;
-  hour: number;
-  weekday: number;
-  is_new_payee: number;
-  device_changed: number;
-  tx_count_24h: number;
+  trans_amount: number;
+  category: number;
+  device_type: string;
+  state: number;
+  trans_hour: number;
+  transaction_frequency: string;
+  age: number;
+  previous_fraud: string;
 }
 
 interface PredictionResult {
@@ -25,54 +24,68 @@ interface PredictionResult {
   shap_top_features: Record<string, number>;
 }
 
-// Simulated ML model prediction
-// In production, this would load actual trained models
+// Simulated ML model prediction based on actual dataset features
 function predictFraud(transaction: TransactionInput): PredictionResult {
-  // Feature engineering
+  // Feature engineering based on dataset columns
   const features = {
-    amount_normalized: transaction.amount / 10000,
-    hour: transaction.hour,
-    weekday: transaction.weekday,
-    tx_count_24h: transaction.tx_count_24h,
-    is_new_payee: transaction.is_new_payee,
-    device_changed: transaction.device_changed,
+    amount_normalized: transaction.trans_amount / 1000,
+    category: transaction.category,
+    trans_hour: transaction.trans_hour,
+    age: transaction.age,
+    state: transaction.state,
+    device_risk: transaction.device_type === 'mobile' ? 0 : transaction.device_type === 'tablet' ? 0.1 : 0.2,
+    frequency_risk: transaction.transaction_frequency === 'low' ? 0 : 
+                   transaction.transaction_frequency === 'normal' ? 0.1 : 
+                   transaction.transaction_frequency === 'high' ? 0.3 : 0.5,
+    fraud_history_risk: transaction.previous_fraud === 'no' ? 0 : 
+                       transaction.previous_fraud === 'low' ? 0.3 : 
+                       transaction.previous_fraud === 'medium' ? 0.5 : 0.8,
   };
 
   // Simulated Random Forest probability (supervised model)
-  // High risk indicators: large amounts, late hours, new payees, device changes
-  let supervised_prob = 0.1; // base probability
+  let supervised_prob = 0.05; // base probability
 
-  if (features.amount_normalized > 3) supervised_prob += 0.25;
-  if (features.amount_normalized > 5) supervised_prob += 0.15;
+  // Amount-based risk
+  if (features.amount_normalized > 500) supervised_prob += 0.2;
+  if (features.amount_normalized > 1000) supervised_prob += 0.15;
   
-  if (features.hour < 6 || features.hour > 22) supervised_prob += 0.15;
+  // Time-based risk (late night/early morning)
+  if (features.trans_hour < 6 || features.trans_hour > 22) supervised_prob += 0.15;
   
-  if (features.is_new_payee === 1) supervised_prob += 0.2;
+  // High-risk categories (investments, electronics, fuel)
+  if ([8, 10, 12].includes(features.category)) supervised_prob += 0.1;
   
-  if (features.device_changed === 1) supervised_prob += 0.25;
+  // Account age (newer accounts are riskier)
+  if (features.age < 2) supervised_prob += 0.2;
+  else if (features.age < 5) supervised_prob += 0.1;
   
-  if (features.tx_count_24h > 10) supervised_prob += 0.1;
-  if (features.tx_count_24h > 20) supervised_prob += 0.15;
+  // Device and frequency risk
+  supervised_prob += features.device_risk;
+  supervised_prob += features.frequency_risk;
+  supervised_prob += features.fraud_history_risk;
 
   supervised_prob = Math.min(supervised_prob, 0.98);
 
   // Simulated Isolation Forest anomaly detection
-  // Detects unusual combinations of features
   let anomaly_score = 0;
   
   // Unusual amount + time combination
-  if (features.amount_normalized > 4 && (features.hour < 6 || features.hour > 22)) {
+  if (features.amount_normalized > 800 && (features.trans_hour < 6 || features.trans_hour > 22)) {
     anomaly_score = 1;
   }
   
-  // High velocity with device change
-  if (features.tx_count_24h > 15 && features.device_changed === 1) {
+  // Very high transaction frequency with high amount
+  if (features.frequency_risk > 0.3 && features.amount_normalized > 500) {
     anomaly_score = 1;
   }
   
-  // New payee with high amount at unusual time
-  if (features.is_new_payee === 1 && features.amount_normalized > 3 && 
-      (features.hour < 7 || features.hour > 21)) {
+  // Previous fraud history with high amount
+  if (features.fraud_history_risk > 0.3 && features.amount_normalized > 300) {
+    anomaly_score = 1;
+  }
+  
+  // New account (< 1 year) with very high amount
+  if (features.age < 2 && features.amount_normalized > 600) {
     anomaly_score = 1;
   }
 
@@ -82,27 +95,30 @@ function predictFraud(transaction: TransactionInput): PredictionResult {
   const is_fraud = risk_score > 0.5 ? 1 : 0;
 
   // Simulated SHAP feature importance
-  // In production, these would come from actual SHAP computation
   const shap_values: Record<string, number> = {};
   
-  if (features.amount_normalized > 2) {
-    shap_values.amount = 0.15 * features.amount_normalized;
+  if (features.amount_normalized > 300) {
+    shap_values.amount = 0.12 + (features.amount_normalized / 1000) * 0.1;
   }
   
-  if (features.hour < 6 || features.hour > 22) {
-    shap_values.hour = 0.12;
+  if (features.trans_hour < 6 || features.trans_hour > 22) {
+    shap_values.time_of_day = 0.15;
   }
   
-  if (features.is_new_payee === 1) {
-    shap_values.is_new_payee = 0.18;
+  if (features.fraud_history_risk > 0) {
+    shap_values.fraud_history = features.fraud_history_risk * 0.25;
   }
   
-  if (features.device_changed === 1) {
-    shap_values.device_changed = 0.22;
+  if (features.age < 5) {
+    shap_values.account_age = 0.1 + ((5 - features.age) * 0.03);
   }
   
-  if (features.tx_count_24h > 10) {
-    shap_values.tx_count_24h = 0.08 * (features.tx_count_24h / 10);
+  if (features.frequency_risk > 0.1) {
+    shap_values.transaction_frequency = features.frequency_risk * 0.2;
+  }
+  
+  if ([8, 10, 12].includes(features.category)) {
+    shap_values.merchant_category = 0.08;
   }
 
   // Sort by absolute value and take top 5
@@ -134,7 +150,7 @@ serve(async (req) => {
     const transaction: TransactionInput = await req.json();
     
     // Validate input
-    if (!transaction.amount || !transaction.user_id || !transaction.merchant_id || !transaction.device_id) {
+    if (!transaction.trans_amount || !transaction.category || !transaction.device_type || !transaction.state) {
       return new Response(
         JSON.stringify({ error: 'Missing required transaction fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
