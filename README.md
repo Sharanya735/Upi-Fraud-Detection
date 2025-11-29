@@ -1,4 +1,4 @@
-UPI Fraud Detection System 
+*UPI Fraud Detection System*
 
 AI-Driven Fraud Detection Using Hybrid Machine Learning Models
 
