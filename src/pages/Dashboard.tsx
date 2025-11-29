@@ -76,8 +76,8 @@ const Dashboard = () => {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? `${(metrics.detection_rate * 100).toFixed(1)}%` : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.fraud_count} frauds detected` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">{metrics?.detection_rate ? `${(metrics.detection_rate * 100).toFixed(1)}%` : '—'}</div>
+                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.fraud_count || 0} frauds detected` : 'Loading...'}</p>
               </CardContent>
             </Card>
 
@@ -87,8 +87,8 @@ const Dashboard = () => {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? metrics.transaction_count : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.throughput_per_min.toFixed(1)} tx/min` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">{metrics?.transaction_count || '—'}</div>
+                <p className="text-xs text-muted-foreground">{metrics?.throughput_per_min ? `${metrics.throughput_per_min.toFixed(1)} tx/min` : 'Loading...'}</p>
               </CardContent>
             </Card>
 
@@ -98,8 +98,8 @@ const Dashboard = () => {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? metrics.fraud_count : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.anomaly_count} anomalies` : ''}</p>
+                <div className="text-2xl font-bold">{metrics?.fraud_count || '—'}</div>
+                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.anomaly_count || 0} anomalies` : ''}</p>
               </CardContent>
             </Card>
 
@@ -109,7 +109,7 @@ const Dashboard = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? `${metrics.avg_latency_ms.toFixed(1)}ms` : '—'}</div>
+                <div className="text-2xl font-bold">{metrics?.avg_latency_ms ? `${metrics.avg_latency_ms.toFixed(1)}ms` : '—'}</div>
                 <p className="text-xs text-muted-foreground">{lastUpdated ? `Updated ${lastUpdated}` : 'Loading...'}</p>
               </CardContent>
             </Card>
