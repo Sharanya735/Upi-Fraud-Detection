@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, AlertTriangle, Shield, Activity } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const [metrics, setMetrics] = useState<any | null>(null);
@@ -13,25 +14,13 @@ const Dashboard = () => {
     let mounted = true;
     const fetchMetrics = async () => {
       try {
-        // try primary backend first, then fallback to alternate port if needed
-        const endpoints = ['http://127.0.0.1:8000/metrics', 'http://127.0.0.1:8001/metrics'];
-        let j = null;
-        for (const url of endpoints) {
-          try {
-            const res = await fetch(url);
-            if (!res.ok) continue;
-            j = await res.json();
-            break;
-          } catch (err) {
-            continue;
-          }
-        }
-        if (!j) return;
+        const { data, error } = await supabase.functions.invoke('get-metrics');
+        if (error) throw error;
         if (!mounted) return;
-        setMetrics(j);
+        setMetrics(data);
         setLastUpdated(new Date().toLocaleTimeString());
       } catch (e) {
-        // ignore
+        console.error('Failed to fetch metrics:', e);
       }
     };
     fetchMetrics();
@@ -87,8 +76,8 @@ const Dashboard = () => {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? `${metrics.detection_rate?.toFixed(1)}%` : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.fraud_count} frauds in last ${metrics.window_seconds}s` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">{metrics ? `${(metrics.detection_rate * 100).toFixed(1)}%` : '—'}</div>
+                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.fraud_count} frauds detected` : 'Loading...'}</p>
               </CardContent>
             </Card>
 
@@ -98,8 +87,8 @@ const Dashboard = () => {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metrics ? metrics.transactions : '—'}</div>
-                <p className="text-xs text-muted-foreground">{metrics ? `${(metrics.throughput_tps*3600).toFixed(0)} tx/hr` : 'Loading...'}</p>
+                <div className="text-2xl font-bold">{metrics ? metrics.transaction_count : '—'}</div>
+                <p className="text-xs text-muted-foreground">{metrics ? `${metrics.throughput_per_min.toFixed(1)} tx/min` : 'Loading...'}</p>
               </CardContent>
             </Card>
 
