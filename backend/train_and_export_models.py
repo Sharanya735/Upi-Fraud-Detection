@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, roc_auc_score
 import shap
 
-DATA_PATH = "upi_fraud_dataset_100rows.csv"  # Place your CSV in project root or change path
+DATA_PATH = "upi_fraud_dataset.csv"  # Place your CSV in project root or change path
 OUTPUT_DIR = "./models"
 RF_MODEL_PATH = os.path.join(OUTPUT_DIR, "rf_model.joblib")
 ISO_MODEL_PATH = os.path.join(OUTPUT_DIR, "iso_model.joblib")
@@ -18,13 +18,51 @@ SCALER_PATH = os.path.join(OUTPUT_DIR, "scaler.joblib")
 # --- Feature Engineering and Load ---
 def load_and_prepare_safe(csv_path):
     df = pd.read_csv(csv_path)
-    required = ['timestamp','transaction_id','user_id','merchant_id','device_id','amount']
-    for c in required:
-        if c not in df.columns:
-            raise ValueError(f"CSV must include column: {c}")
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+
+    # Provide flexible mapping for datasets with different column names.
+    # If expected columns are missing, try common alternatives from the provided CSV.
+    # Map alternatives into the canonical names used by the rest of the script.
+    colmap = {}
+    if 'timestamp' not in df.columns:
+        # Try to assemble a timestamp from separate date/time fields
+        if {'trans_year', 'trans_month', 'trans_day', 'trans_hour'}.issubset(df.columns):
+            df['timestamp'] = pd.to_datetime(
+                df['trans_year'].astype(str) + '-' + df['trans_month'].astype(str) + '-' + df['trans_day'].astype(str) + ' ' + df['trans_hour'].astype(str) + ':00:00',
+                errors='coerce'
+            )
+        else:
+            # last resort: try common names
+            possible_ts = ['time', 'date', 'datetime']
+            found = None
+            for p in possible_ts:
+                if p in df.columns:
+                    df['timestamp'] = pd.to_datetime(df[p], errors='coerce')
+                    found = p
+                    break
+            if found is None:
+                raise ValueError("CSV must include a timestamp column or (trans_year, trans_month, trans_day, trans_hour) to build one.")
+    else:
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     if df['timestamp'].isnull().any():
         raise ValueError("Some 'timestamp' rows could not be parsed to datetime. Check CSV.")
+    # Map alternative column names to the canonical ones used downstream
+    if 'transaction_id' not in df.columns and 'Id' in df.columns:
+        df = df.rename(columns={'Id': 'transaction_id'})
+    if 'user_id' not in df.columns and 'upi_number' in df.columns:
+        df = df.rename(columns={'upi_number': 'user_id'})
+    if 'merchant_id' not in df.columns and 'category' in df.columns:
+        df = df.rename(columns={'category': 'merchant_id'})
+    if 'device_id' not in df.columns and 'device' in df.columns:
+        df = df.rename(columns={'device': 'device_id'})
+    # Fallback: if there's no device_id, reuse user_id as device_id placeholder
+    if 'device_id' not in df.columns and 'user_id' in df.columns:
+        df['device_id'] = df['user_id']
+    # Map amount and label fields
+    if 'amount' not in df.columns and 'trans_amount' in df.columns:
+        df = df.rename(columns={'trans_amount': 'amount'})
+    if 'is_fraud' not in df.columns and 'fraud_risk' in df.columns:
+        df = df.rename(columns={'fraud_risk': 'is_fraud'})
+
     df = df.sort_values(['user_id','timestamp']).reset_index(drop=True)
     df['hour'] = df['timestamp'].dt.hour
     df['weekday'] = df['timestamp'].dt.weekday
