@@ -1,73 +1,105 @@
-# Welcome to your Lovable project
+UPI Fraud Detection System 
 
-## Project info
+AI-Driven Fraud Detection Using Hybrid Machine Learning Models
 
-**URL**: https://lovable.dev/projects/c8b6e663-69fb-45ce-a0c9-4291909f1e16
+This project presents an intelligent fraud detection system designed for UPI (Unified Payments Interface) transactions. The system uses a hybrid Machine Learning approach that combines supervised learning (Random Forest) and unsupervised anomaly detection (Isolation Forest) to identify suspicious transactions in real time. The solution integrates UPI-specific behavioral features, anomaly scoring, and SHAP-based explainability to deliver accurate and transparent predictions.
 
-## How can I edit this code?
+🔍 Project Overview
 
-There are several ways of editing your application.
+With increasing digital payments, fraud prevention is critical. Traditional rule-based systems struggle with new fraud patterns. Our project addresses this by developing a data-driven AI system that learns transaction behavior, detects anomalies, and outputs an interpretable fraud risk score.
 
-**Use Lovable**
+The system is designed to be:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c8b6e663-69fb-45ce-a0c9-4291909f1e16) and start prompting.
+Accurate – hybrid model improves recall on minority fraud cases
 
-Changes made via Lovable will be committed automatically to this repo.
+Explainable – SHAP values show which features influenced the decision
 
-**Use your preferred IDE**
+Deployable – exportable models + API-ready prediction function
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+UPI-specific – engineered features aligned with real transaction behavior
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+🧠 Methodology
+1. Dataset & Feature Engineering
 
-Follow these steps:
+Input dataset includes:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+timestamp, transaction_id, user_id, merchant_id, device_id, amount, location, channel, is_fraud
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+Engineered features:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Hour & weekday
 
-**Edit a file directly in GitHub**
+Transaction velocity (tx_count_24h)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+New payee indicator
 
-**Use GitHub Codespaces**
+Device change detection
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Log-transformed amount
 
-## What technologies are used for this project?
+Encoded categorical features
 
-This project is built with:
+2. Machine Learning Models
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Random Forest (Calibrated) – learns fraud patterns
 
-## How can I deploy this project?
+Isolation Forest – detects unusual behavior
 
-Simply open [Lovable](https://lovable.dev/projects/c8b6e663-69fb-45ce-a0c9-4291909f1e16) and click on Share -> Publish.
+Hybrid Score – weighted fusion for stronger accuracy
 
-## Can I connect a custom domain to my Lovable project?
+3. Explainability
 
-Yes, you can!
+SHAP values identify top features driving the fraud probability
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+💻 System Architecture
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Dataset → Feature Engineering → Train ML Models → Hybrid Scoring → SHAP Explainability → API / UI Integration
+
+Models exported as:
+
+rf_model.joblib  
+iso_model.joblib  
+scaler.joblib  
+encoders.joblib  
+
+⚙️ How to Run
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+
+Train & export models:
+
+python train_and_export_models_v2.py
+
+
+Predict a transaction:
+
+from train_and_export_models_v2 import predict_single
+predict_single({...})
+
+🎯 Outcomes
+
+Developed a complete end-to-end UPI fraud detection pipeline
+
+Improved recall on minority fraud class using hybrid ML
+
+Provides transparent SHAP-based explanations
+
+Ready for integration with frontend dashboards (Streamlit/React) and APIs
+
+📚 Technologies Used
+
+Python
+
+Pandas, NumPy
+
+Scikit-Learn
+
+SHAP
+
+Joblib
+
+FastAPI
