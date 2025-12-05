@@ -149,8 +149,13 @@ serve(async (req) => {
   try {
     const transaction: TransactionInput = await req.json();
     
-    // Validate input
-    if (!transaction.trans_amount || !transaction.category || !transaction.device_type || !transaction.state) {
+    // Validate input - use explicit checks since 0 is a valid value for numeric fields
+    if (
+      transaction.trans_amount === undefined || transaction.trans_amount === null ||
+      transaction.category === undefined || transaction.category === null ||
+      !transaction.device_type ||
+      transaction.state === undefined || transaction.state === null
+    ) {
       return new Response(
         JSON.stringify({ error: 'Missing required transaction fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
